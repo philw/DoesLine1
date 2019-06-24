@@ -17,5 +17,9 @@
   <ItemGroup>
     <None Include="DoesLine1.ino" />
   </ItemGroup>
- 
+  <ItemGroup>
+    <ClInclude Include="__vm\.DoesLine1.vsarduino.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>
