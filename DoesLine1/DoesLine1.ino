@@ -18,6 +18,7 @@ const int rightF = 7;  // set to true to go forward
 const int rightB = 8;  // set to true to go backwards
 const int rightP = 9;  // PWM power setting 0 - 255
 
+// constants for motor speed/direction combinations
 const int M_STOP = 0;
 const int M_FORWARD = 1;
 const int M_BACK = 2;
@@ -41,8 +42,9 @@ const int S_PIVOT_RIGHT = 6;
 const int S_ROTATE_LEFT = 7;
 const int S_ROTATE_RIGHT = 8;
 
+// define strings for use in debug messages
 char *stateNames[] = { "START","OFF_LINE","ON_LINE","MOVE_LEFT","MOVE_RIGHT",
-					  "PIVOT_LEFT","PIVOT_RIGHT","ROTATE_RIGHT","ROTATE_LEFT" };
+					  "PIVOT_LEFT","PIVOT_RIGHT","ROTATE_LEFT","ROTATE_RIGHT" };
 
 
 
@@ -94,16 +96,14 @@ void setup() {
 	digitalWrite(rightB, LOW);
 	analogWrite(rightP, 0);
 
-	currentState = S_START;
-	Serial.println(currentState);
-	setMotors(M_STOP);
+	setState(S_START);
 }
 
 void loop() {
 
 
 	updateState();
-	//delay(100);
+	//delay(10);
 
 
   /*
@@ -116,8 +116,8 @@ void loop() {
 	//delay(2000);
   */
 
-  /*
-	// test the five sensors
+ /*
+ 	// test the five sensors
 	readSensors();
 	Serial.print(left2S);
 	Serial.print(left1S);
@@ -125,9 +125,20 @@ void loop() {
 	Serial.print(right1S);
 	Serial.print(right2S);
 	Serial.println();
-	//delay(1000);
-  */
+ */
+ 
 }
+
+void printSensors() {
+	Serial.print(left2S);
+	Serial.print(left1S);
+	Serial.print(centreS);
+	Serial.print(right1S);
+	Serial.print(right2S);
+	Serial.println();
+}
+
+
 
 void updateState() {
 
@@ -135,38 +146,50 @@ void updateState() {
 
 	if ((sensors > 20) && (!leftLine)) {
 		leftLine = true;
+		rightLine = false;
 		Serial.println("Left line detected");
 	}
 	if ((sensors == 7) && (!rightLine)) {
 		rightLine = true;
+		leftLine = false;
 		Serial.println("Right line detected");
 	}
 
+
+
+	// this should only happen at the end of the line
 	if ((sensors == 0) && (currentState != S_OFF_LINE)) {
 		setState(S_OFF_LINE);
 		return;
 	}
 
+
 	switch (currentState) {
 
 	case S_START:
-		// move forward when the centre sensor detects the line
-		// ignore sensors L1 and R1 for now
 		if (sensors & 4) {
 			setState(S_ON_LINE);
 		}
 		break;
 
 	case S_OFF_LINE:
+		if (sensors > 0) {
+			setState(S_ON_LINE);
+		}
 		break;
 
 	case S_ON_LINE:
-		/*
-			  if(sensors == 4) {
-				leftLine == false;
-				rightLine == false;
-			  }
-		*/
+
+		// pivot if L1&L2 or R1&R2 are triggered
+		//if (sensors & 1) {
+		//	setState(S_ROTATE_RIGHT);
+		//}
+		//else if (sensors & 16) {
+		//	setState(S_ROTATE_LEFT);
+		//}
+
+
+
 		// don't correct until centre sensor is no longer active
 		if ((sensors & 3) && !(sensors & 4)) {
 			setState(S_MOVE_RIGHT);
@@ -181,15 +204,13 @@ void updateState() {
 			setState(S_ON_LINE);
 		}
 		else if (sensors & 1) {
-			setMotors(M_PIVOT_RIGHT);
-			currentState = S_PIVOT_RIGHT;
+			setState(S_PIVOT_RIGHT);
 		}
 		break;
 
 	case S_PIVOT_RIGHT:
 		if (sensors & 2) {
-			setMotors(M_RIGHT);
-			currentState = S_MOVE_RIGHT;
+			setState(S_MOVE_RIGHT);
 		}
 		break;
 
@@ -198,15 +219,13 @@ void updateState() {
 			setState(S_ON_LINE);
 		}
 		else if (sensors & 16) {
-			setMotors(M_PIVOT_LEFT);
-			currentState = S_PIVOT_LEFT;
+			setState(S_PIVOT_LEFT);
 		}
 		break;
 
 	case S_PIVOT_LEFT:
 		if (sensors & 8) {
-			setMotors(M_LEFT);
-			currentState = S_MOVE_LEFT;
+			setState(S_MOVE_LEFT);
 		}
 		break;
 
@@ -231,6 +250,8 @@ void updateState() {
 
 void setState(int newState) {
 
+	printSensors();
+
 	switch (newState) {
 	case S_START:
 		setMotors(M_STOP);
@@ -238,30 +259,28 @@ void setState(int newState) {
 
 	case S_ROTATE_LEFT:
 		setMotors(M_ROTATE_LEFT);
-		leftLine = false;
-		rightLine = false;
 		break;
 
 	case S_ROTATE_RIGHT:
 		setMotors(M_ROTATE_RIGHT);
-		leftLine = false;
-		rightLine = false;
 		break;
 
 
 	case S_OFF_LINE:
-		if (leftLine) {
-			setState(S_ROTATE_LEFT);
+		if (rightLine) {
+			setMotors(M_ROTATE_RIGHT);
 		}
 		else {
-			setState(S_ROTATE_RIGHT);
+			setMotors(M_ROTATE_LEFT);
 		}
-		leftLine = false;
 		rightLine = false;
+		leftLine = false;
 		break;
 
 	case S_ON_LINE:
 		setMotors(M_FORWARD);
+		leftLine = false;
+		rightLine = false;
 		break;
 
 	case S_MOVE_RIGHT:
@@ -272,6 +291,14 @@ void setState(int newState) {
 		setMotors(M_LEFT);
 		break;
 
+	case S_PIVOT_LEFT:
+		setMotors(M_PIVOT_LEFT);
+		break;
+
+	case S_PIVOT_RIGHT:
+		setMotors(M_PIVOT_RIGHT);
+		break;
+
 	}
 
 
@@ -279,9 +306,6 @@ void setState(int newState) {
 	Serial.println(stateNames[currentState]);
 
 }
-
-
-
 
 void readSensors() {
 	// set individual values as well as the combined integer
