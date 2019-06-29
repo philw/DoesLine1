@@ -149,7 +149,7 @@ void updateState() {
 		rightLine = false;
 		Serial.println("Left line detected");
 	}
-	if ((sensors == 7) && (!rightLine)) {
+	if ((sensors & 3) && (!rightLine)) {
 		rightLine = true;
 		leftLine = false;
 		Serial.println("Right line detected");
@@ -209,7 +209,7 @@ void updateState() {
 		break;
 
 	case S_PIVOT_RIGHT:
-		if (sensors & 2) {
+		if ((sensors & 2) && !(sensors & 1)) {
 			setState(S_MOVE_RIGHT);
 		}
 		break;
@@ -224,7 +224,7 @@ void updateState() {
 		break;
 
 	case S_PIVOT_LEFT:
-		if (sensors & 8) {
+		if ((sensors & 8) && !(sensors & 16)) {
 			setState(S_MOVE_LEFT);
 		}
 		break;
